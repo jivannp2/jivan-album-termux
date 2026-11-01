@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jivan Album - Photo Gallery & AI Editor</title>
+    <style>
+        :root {
+            --bg: #0B1020;
+            --surface: #151C33;
+            --surface-hover: #1E2746;
+            --accent: #6366F1;
+            --accent-hover: #4F46E5;
+            --text: #E8ECF5;
+            --text-muted: #94A3B8;
+            --border: #2A3655;
+            --danger: #EF4444;
+            --success: #10B981;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: clamp(16px, 4vw, 32px);
+            min-height: 100vh;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        h1 {
+            font-size: clamp(28px, 6vw, 42px);
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background-color: var(--accent);
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            min-height: 48px;
+            transition: transform 0.18s ease, background-color 0.18s ease;
+        }
+        .btn:hover, .btn:active {
+            background-color: var(--accent-hover);
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background-color: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background-color: var(--surface-hover);
+        }
+        .btn-success {
+            background-color: var(--success);
+            color: #fff;
+        }
+        .btn-success:hover {
+            background-color: #059669;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .photo-card {
+            background-color: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .photo-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+        .photo-thumb-container {
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .photo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-info {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .photo-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+        .photo-date {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 48px 20px;
+            background-color: var(--surface);
+            border-radius: 16px;
+            border: 1px dashed var(--border);
+        }
+        .empty-state p {
+            color: var(--text-muted);
+            margin-top: 12px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(11, 16, 32, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 600px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 650;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .close-btn:hover {
+            color: var(--text);
+        }
+        
+        /* Editor Canvas & Controls */
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .canvas-preview-wrap {
+            width: 100%;
+            max-height: 320px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+        }
+        #editorCanvas {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+        }
+        .ai-tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 8px;
+        }
+        .tool-btn {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s ease;
+        }
+        .tool-btn:hover {
+            border-color: var(--accent);
+            background: var(--surface-hover);
+        }
+        .sliders-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .slider-row label {
+            font-size: 14px;
+            width: 90px;
+            color: var(--text-muted);
+        }
+        .slider-row input[type="range"] {
+            flex-grow: 1;
+            accent-color: var(--accent);
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Jivan Album</h1>
+        <p class="subtitle">Aapki yaadon ka digital photo gallery aur AI Photo Editor</p>
+        <div class="header-actions">
+            <label class="btn" for="fileInput">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Photo Jodein
+            </label>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" multiple>
+        </div>
+    </header>
+
+    <main>
+        <div class="gallery-grid" id="galleryGrid">
+            <!-- Dynamic Photos -->
+        </div>
+    </main>
+
+    <!-- AI Photo Editor Modal -->
+    <div class="modal-overlay" id="editorModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">✨ AI Photo Studio</div>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <div class="editor-container">
+                <div class="canvas-preview-wrap">
+                    <canvas id="editorCanvas"></canvas>
+                </div>
+                
+                <div class="ai-tools-grid">
+                    <button class="tool-btn" onclick="applyAiFilter('auto')">🪄 Auto Enhance</button>
+                    <button class="tool-btn" onclick="applyAiFilter('vibrant')">🎨 Vibrant Pop</button>
+                    <button class="tool-btn" onclick="applyAiFilter('bw')">🎞️ Classic B&W</button>
+                    <button class="tool-btn" onclick="rotateCanvas()">🔄 Rotate 90°</button>
+                </div>
+
+                <div class="sliders-group">
+                    <div class="slider-row">
+                        <label>Brightness</label>
+                        <input type="range" id="brightnessRange" min="50" max="150" value="100" oninput="updateFilters()">
+                    </div>
+                    <div class="slider-row">
+                        <label>Contrast</label>
+                        <input type="range" id="contrastRange" min="50" max="150" value="100" oninput="updateFilters()">
+                    </div>
+                    <div class="slider-row">
+                        <label>Saturation</label>
+                        <input type="range" id="saturationRange" min="0" max="200" value="100" oninput="updateFilters()">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditorModal()">Cancel</button>
+                <button class="btn btn-success" onclick="saveEditedPhoto()">Save to Album</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let photos = JSON.parse(localStorage.getItem('jivan_photos') || '[]');
+        let currentImageObj = null;
+        let canvas = document.getElementById('editorCanvas');
+        let ctx = canvas.getContext('2d');
+        let originalImage = new Image();
+        let currentRotation = 0;
+
+        function renderGallery() {
+            const grid = document.getElementById('galleryGrid');
+            if (photos.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        <p>Abhi koi photo nahi hai. "Photo Jodein" button se nayi photo add karein!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = photos.map((photo, index) => `
+                <div class="photo-card">
+                    <div class="photo-thumb-container" onclick="openEditor(${index})">
+                        <img src="${photo.dataUrl}" class="photo-img" alt="${photo.title}">
+                    </div>
+                    <div class="photo-info">
+                        <div>
+                            <div class="photo-title">${escapeHtml(photo.title)}</div>
+                            <div class="photo-date">${photo.date}</div>
+                        </div>
+                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size:13px; min-height:36px;" onclick="openEditor(${index})">Edit AI</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    photos.unshift({
+                        id: Date.now() + Math.random(),
+                        title: file.name.substring(0, file.name.lastIndexOf('.')) || 'Photo',
+                        date: new Date().toLocaleDateString('hi-IN'),
+                        dataUrl: event.target.result
+                    });
+                    localStorage.setItem('jivan_photos', JSON.stringify(photos));
+                    renderGallery();
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        let editingIndex = null;
+        function openEditor(index) {
+            editingIndex = index;
+            const photo = photos[index];
+            originalImage.src = photo.dataUrl;
+            originalImage.onload = () => {
+                currentRotation = 0;
+                resetSliders();
+                drawImageToCanvas();
+                document.getElementById('editorModal').classList.add('active');
+            };
+        }
+
+        function closeEditorModal() {
+            document.getElementById('editorModal').classList.remove('active');
+        }
+
+        document.getElementById('closeModal').addEventListener('click', closeEditorModal);
+
+        function resetSliders() {
+            document.getElementById('brightnessRange').value = 100;
+            document.getElementById('contrastRange').value = 100;
+            document.getElementById('saturationRange').value = 100;
+        }
+
+        function drawImageToCanvas() {
+            canvas.width = originalImage.naturalWidth;
+            canvas.height = originalImage.naturalHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((currentRotation * Math.PI) / 180);
+            
+            const b = document.getElementById('brightnessRange').value;
+            const c = document.getElementById('contrastRange').value;
+            const s = document.getElementById('saturationRange').value;
+            ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
+
+            ctx.drawImage(originalImage, -originalImage.naturalWidth / 2, -originalImage.naturalHeight / 2);
+            ctx.restore();
+        }
+
+        function updateFilters() {
+            drawImageToCanvas();
+        }
+
+        function applyAiFilter(type) {
+            if (type === 'auto') {
+                document.getElementById('brightnessRange').value = 115;
+                document.getElementById('contrastRange').value = 110;
+                document.getElementById('saturationRange').value = 120;
+            } else if (type === 'vibrant') {
+                document.getElementById('brightnessRange').value = 105;
+                document.getElementById('contrastRange').value = 125;
+                document.getElementById('saturationRange').value = 160;
+            } else if (type === 'bw') {
+                document.getElementById('brightnessRange').value = 100;
+                document.getElementById('contrastRange').value = 120;
+                document.getElementById('saturationRange').value = 0;
+            }
+            drawImageToCanvas();
+        }
+
+        function rotateCanvas() {
+            currentRotation = (currentRotation + 90) % 360;
+            drawImageToCanvas();
+        }
+
+        function saveEditedPhoto() {
+            if (editingIndex !== null) {
+                photos[editingIndex].dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                localStorage.setItem('jivan_photos', JSON.stringify(photos));
+                renderGallery();
+                closeEditorModal();
+            }
+        }
+
+        // Initial load
+        renderGallery();
+    </script>
+</body>
+</html>
